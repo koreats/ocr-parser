@@ -1,8 +1,5 @@
 let currentResult = null;
 
-// 템플릿 선택
-
-
 // 드래그 앤 드롭
 const uploadZone = document.getElementById('upload-zone');
 const fileInput = document.getElementById('file-input');
@@ -54,7 +51,6 @@ async function handleFileUpload(file) {
     
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('rules_kie', 'false');
     
     try {
         const response = await fetch('/parse', {
@@ -69,10 +65,13 @@ async function handleFileUpload(file) {
         const result = await response.json();
         currentResult = result;
         
+        console.log('서버 응답:', result); // 디버깅용
+        
         displayResults(result);
         showAlert('파싱 완료!', 'success');
         
     } catch (error) {
+        console.error('파싱 오류:', error);
         showAlert('오류 발생: ' + error.message, 'error');
     } finally {
         uploadZone.classList.remove('uploading');
@@ -84,19 +83,33 @@ async function handleFileUpload(file) {
 function displayResults(result) {
     const formStructure = result.form_structure || {};
     
-    // 통계 업데이트
-    document.getElementById('stat-title').textContent = formStructure.title || 'N/A';
-    document.getElementById('stat-sections').textContent = (formStructure.sections || []).length;
+    // 제목 추출 (첫 번째 요소가 제목일 가능성 높음)
+    const elements = formStructure.elements || [];
+    const firstElement = elements.length > 0 ? elements[0] : null;
+    const title = firstElement ? firstElement.label : '문서 제목 없음';
     
-    const formElements = formStructure.form_elements || {};
-    const totalElements = 
-        (formElements.text_inputs || []).length +
-        (formElements.checkboxes || []).length +
-        (formElements.buttons || []).length +
-        (formElements.file_uploads || []).length;
+    // 섹션 수 계산 (llm_prompt에서 "Section_" 문자열 개수로 추정)
+    const llmPrompt = result.llm_prompt || '';
+    const sectionMatches = llmPrompt.match(/## Section: Section_\d+/g);
+    const sectionCount = sectionMatches ? sectionMatches.length : 0;
+    
+    // 통계 업데이트
+    document.getElementById('stat-title').textContent = title;
+    document.getElementById('stat-sections').textContent = sectionCount;
+    
+    const elementsByType = formStructure.elements_by_type || {};
+    const totalElements = formStructure.total_elements || 0;
     
     document.getElementById('stat-elements').textContent = totalElements;
-    document.getElementById('stat-tables').textContent = (formStructure.tables || []).length;
+    
+    // 표 개수 (ppstructure에서 추출)
+    const ppstructure = result.ppstructure || [];
+    let tableCount = 0;
+    ppstructure.forEach(ps => {
+        const tables = ps.tables || [];
+        tableCount += tables.length;
+    });
+    document.getElementById('stat-tables').textContent = tableCount;
     
     // 프롬프트 업데이트
     updatePromptDisplay(result);
@@ -104,16 +117,26 @@ function displayResults(result) {
 
 // 프롬프트 표시 업데이트
 function updatePromptDisplay(result) {
-    const promptText = result.hybrid_prompt || '';
+    // 핵심 수정: hybrid_prompt → llm_prompt
+    const promptText = result.llm_prompt || '';
+    
+    if (!promptText) {
+        console.warn('llm_prompt가 비어있습니다:', result);
+        document.getElementById('prompt-text').textContent = 'LLM 프롬프트 생성 실패. 콘솔을 확인하세요.';
+        return;
+    }
+    
     document.getElementById('prompt-text').textContent = promptText;
 }
-
-// 템플릿별 프롬프트 생성
-
 
 // 복사 버튼
 document.getElementById('copy-btn').addEventListener('click', async () => {
     const promptText = document.getElementById('prompt-text').textContent;
+    
+    if (!promptText || promptText.includes('생성 실패')) {
+        showAlert('복사할 프롬프트가 없습니다.', 'error');
+        return;
+    }
     
     try {
         await navigator.clipboard.writeText(promptText);

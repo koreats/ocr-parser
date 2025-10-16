@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, Form, Request
+from fastapi import FastAPI, UploadFile, File, Request
 from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -22,7 +22,11 @@ async def health():
     return {"ok": True}
 
 @app.post("/parse")
-async def parse_api(file: UploadFile = File(...), rules_kie: bool = Form(False)):
+async def parse_api(file: UploadFile = File(...)):
+    """
+    이미지/PDF 업로드 및 파싱
+    항상 양식 구조 분석 수행
+    """
     up = Path("uploads")
     up.mkdir(exist_ok=True)
     fname = f"{uuid.uuid4().hex}_{file.filename}"
@@ -31,7 +35,7 @@ async def parse_api(file: UploadFile = File(...), rules_kie: bool = Form(False))
     with fpath.open("wb") as f:
         shutil.copyfileobj(file.file, f)
     
-    # form_analysis=True로 항상 양식 분석 수행
-    res = parse_document(str(fpath), use_rules_kie=rules_kie, use_form_analysis=True)
+    # form_analysis=True (올바른 파라미터 이름 사용)
+    res = parse_document(str(fpath), form_analysis=True)
     
     return JSONResponse(content=res)
