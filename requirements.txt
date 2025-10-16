@@ -1,0 +1,41 @@
+# Core OCR - Apple Silicon MPS 지원
+torch>=2.0.0
+torchvision>=0.15.0
+surya-ocr
+
+# PDF 처리
+pymupdf>=1.23.0
+pypdfium2
+
+# FastAPI 서버
+fastapi
+uvicorn
+python-multipart
+
+# ML/AI 라이브러리
+onnxruntime
+
+# 데이터 처리
+pydantic>=2.0.0
+numpy<2.0.0
+pillow
+opencv-python-headless
+pandas
+
+# 유틸리티
+rapidfuzz
+shapely
+
+# LLM (4부에서 사용)
+openai
+tenacity
+
+# 벤치마크 (4부에서 사용)
+jiwer
+
+# 관측성 (5부에서 사용)
+opentelemetry-sdk
+opentelemetry-exporter-otlp
+opentelemetry-instrumentation-fastapi
+sentry-sdk
+gunicorn
